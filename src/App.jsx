@@ -7,51 +7,65 @@ export default function App() {
   const [editingId, setEditingId] = useState(null);
   const [editingText, setEditingText] = useState("");
 
+  // Use the backend URL from Vite env variable
   const API_URL = import.meta.env.VITE_API_URL;
 
-  // Fetch all items
+  // Fetch all items on component mount
   useEffect(() => {
     fetch(`${API_URL}/items`)
       .then((res) => res.json())
-      .then((data) => setItems(data));
-  }, []);
+      .then((data) => setItems(data))
+      .catch((error) => console.error("Error fetching items:", error));
+  }, [API_URL]);
 
   // Add new item
   const addItem = async () => {
     if (!newItem.trim()) return;
-    const res = await fetch(`${API_URL}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newItem }),
-    });
-    const data = await res.json();
-    setItems([...items, data]);
-    setNewItem("");
+    try {
+      const res = await fetch(`${API_URL}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newItem }),
+      });
+      const data = await res.json();
+      setItems([...items, data]);
+      setNewItem("");
+    } catch (error) {
+      console.error("Error adding item:", error);
+    }
   };
 
   // Delete item
   const deleteItem = async (id) => {
-    await fetch(`${API_URL}/items/${id}`, { method: "DELETE" });
-    setItems(items.filter((item) => item._id !== id));
+    try {
+      await fetch(`${API_URL}/items/${id}`, { method: "DELETE" });
+      setItems(items.filter((item) => item._id !== id));
+    } catch (error) {
+      console.error("Error deleting item:", error);
+    }
   };
 
-  // Start editing
+  // Start editing item
   const startEditing = (id, name) => {
     setEditingId(id);
     setEditingText(name);
   };
 
-  // Save edit
+  // Save edited item
   const saveEdit = async (id) => {
-    const res = await fetch(`${API_URL}/items/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editingText }),
-    });
-    const data = await res.json();
-    setItems(items.map((item) => (item._id === id ? data : item)));
-    setEditingId(null);
-    setEditingText("");
+    try {
+      const res = await fetch(`${API_URL}/items/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editingText }),
+      });
+      const data = await res.json();
+      setItems(items.map((item) => (item._id === id ? data : item)));
+      setEditingId(null);
+      setEditingText("");
+    } catch (error) {
+      console.error("Error saving edit:", error);
+    }
   };
 
   return (
