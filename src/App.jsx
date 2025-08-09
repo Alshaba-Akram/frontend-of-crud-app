@@ -1,60 +1,117 @@
-import { useEffect, useState } from 'react';
-import axios from 'axios';
-import './App.css';
+import { useEffect, useState } from "react";
+import "./App.css";
 
-function App() {
-  const [text, setText] = useState('');
+export default function App() {
   const [items, setItems] = useState([]);
-  const [editId, setEditId] = useState('');
+  const [newItem, setNewItem] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [editingText, setEditingText] = useState("");
 
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  // Fetch all items
   useEffect(() => {
-    axios.get('http://localhost:5000/items').then(res => setItems(res.data));
+    fetch(`${API_URL}/items`)
+      .then((res) => res.json())
+      .then((data) => setItems(data));
   }, []);
 
-  function save(e) {
-    e.preventDefault();
-    if (editId) {
-      axios.put(`http://localhost:5000/items/${editId}`, { name: text }).then(() => reload());
-    } else {
-      axios.post('http://localhost:5000/items', { name: text }).then(() => reload());
-    }
-  }
-
-  function del(id) {
-    axios.delete(`http://localhost:5000/items/${id}`).then(() => reload());
-  }
-
-  function reload() {
-    axios.get('http://localhost:5000/items').then(res => {
-      setItems(res.data);
-      setText('');
-      setEditId('');
+  // Add new item
+  const addItem = async () => {
+    if (!newItem.trim()) return;
+    const res = await fetch(`${API_URL}/items`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newItem }),
     });
-  }
+    const data = await res.json();
+    setItems([...items, data]);
+    setNewItem("");
+  };
+
+  // Delete item
+  const deleteItem = async (id) => {
+    await fetch(`${API_URL}/items/${id}`, { method: "DELETE" });
+    setItems(items.filter((item) => item._id !== id));
+  };
+
+  // Start editing
+  const startEditing = (id, name) => {
+    setEditingId(id);
+    setEditingText(name);
+  };
+
+  // Save edit
+  const saveEdit = async (id) => {
+    const res = await fetch(`${API_URL}/items/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editingText }),
+    });
+    const data = await res.json();
+    setItems(items.map((item) => (item._id === id ? data : item)));
+    setEditingId(null);
+    setEditingText("");
+  };
 
   return (
-    <div className="App">
-      <form onSubmit={save}>
+    <div className="app-container">
+      <h1>📋 My Task List</h1>
+
+      {/* Input & Add Button */}
+      <div className="input-section">
         <input
           type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          required
+          placeholder="Enter a new task..."
+          value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
         />
-        <button type="submit">{editId ? 'Update' : 'Add'}</button>
-      </form>
+        <button onClick={addItem}>➕ Add</button>
+      </div>
 
+      {/* Task List */}
       <ul>
-        {items.map(i => (
-          <li key={i._id}>
-            {i.name}
-            <button onClick={() => { setText(i.name); setEditId(i._id); }}>✏</button>
-            <button onClick={() => del(i._id)}>■</button>
+        {items.map((item) => (
+          <li key={item._id} className="task-item">
+            {editingId === item._id ? (
+              <>
+                <input
+                  type="text"
+                  value={editingText}
+                  onChange={(e) => setEditingText(e.target.value)}
+                />
+                <button className="save-btn" onClick={() => saveEdit(item._id)}>
+                  💾 Save
+                </button>
+                <button
+                  className="cancel-btn"
+                  onClick={() => setEditingId(null)}
+                >
+                  ❌ Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <span>{item.name}</span>
+                <div className="btn-group">
+                  <button
+                    className="edit-btn"
+                    onClick={() => startEditing(item._id, item.name)}
+                  >
+                    ✏️ Edit
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => deleteItem(item._id)}
+                  >
+                    🗑️ Delete
+                  </button>
+                </div>
+              </>
+            )}
           </li>
         ))}
       </ul>
     </div>
   );
 }
-
-export default App;
